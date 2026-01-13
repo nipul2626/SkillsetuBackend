@@ -1,0 +1,46 @@
+server:
+  port: 8081
+
+
+spring:
+  application:
+    name: skillsetu-backend
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/skillsetu
+    username: postgres
+    password: nipul9678
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000
+
+# These keys must match the @Value("${...}") tags in your JwtTokenProvider.java
+app:
+  jwtSecret: MyVerySecureSecretKeyThatIsAtLeast256BitsLongForJWT2024
+  jwtExpirationInMs: 604800000
+
+ai:
+  groq:
+    api-key: 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
+    enabled: true
+  gemini:
+    api-key: AIzaSyD7KK84M0q-7XFPpJAkVZNc2jMyFbErCV4
+    enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.skillsetu.backend: DEBUG
