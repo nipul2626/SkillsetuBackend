@@ -29,7 +29,7 @@ spring:
 
 # These keys must match the @Value("${...}") tags in your JwtTokenProvider.java
 app:
-  jwtSecret: MyVerySecureSecretKeyThatIsAtLeast256BitsLongForJWT2024
+  jwtSecret: zdtlYpX9Q2N5W8mS4vFrG7kBjN1mP4wQ6tV9xZ2aC5eH8jK3nM6pRsUuWwYzAbCdE
   jwtExpirationInMs: 604800000
 
 ai:

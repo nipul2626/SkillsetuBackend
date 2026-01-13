@@ -3,6 +3,8 @@ package com.skillsetu.backend.controller;
 import com.skillsetu.backend.dto.LoginRequest;
 import com.skillsetu.backend.dto.LoginResponse;
 import com.skillsetu.backend.dto.RegisterRequest;
+import com.skillsetu.backend.entity.User;
+import com.skillsetu.backend.repository.UserRepository;
 import com.skillsetu.backend.security.JwtTokenProvider;
 import com.skillsetu.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -37,6 +40,7 @@ public class AuthController {
             // This is where the magic (and the failure) happens
             System.out.println("DEBUG: Email: [" + request.getEmail() + "]");
             System.out.println("DEBUG: Password: [" + request.getPassword() + "]");
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
@@ -46,9 +50,16 @@ public class AuthController {
 
             String token = tokenProvider.generateToken(authentication);
 
+            // Get user details to include in response
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
             LoginResponse response = new LoginResponse();
             response.setToken(token);
             response.setEmail(request.getEmail());
+            response.setRole(user.getRole().name());
+            response.setStudentId(user.getId());  // CRITICAL: Set the student ID
+            response.setFullName(user.getFullName());
             response.setMessage("Login successful");
 
             log.info("User {} authenticated successfully", request.getEmail());
@@ -69,7 +80,13 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         log.info("Registration attempt for email: {}", request.getEmail());
-        authService.registerUser(request);
-        return ResponseEntity.ok("User registered successfully");
+        try {
+            authService.registerUser(request);
+            return ResponseEntity.ok("User registered successfully");
+        } catch (Exception e) {
+            log.error("Registration failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Registration failed: " + e.getMessage());
+        }
     }
 }
