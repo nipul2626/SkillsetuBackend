@@ -34,10 +34,10 @@ app:
 
 ai:
   groq:
-    api-key: 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
+    api-key: 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
     enabled: true
   gemini:
-    api-key: AIzaSyD7KK84M0q-7XFPpJAkVZNc2jMyFbErCV4
+    api-key: AIzaSyBI9rnNdqHdXhFSrgCcdhlSo-tC1QAm230
     enabled: true
 
 logging:

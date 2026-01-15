@@ -1,5 +1,6 @@
 package com.skillsetu.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -25,13 +26,14 @@ public class College extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // One college has many TPOs
     @OneToMany(mappedBy = "college", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<User> tpos = new ArrayList<>();
 
-    // One college has many students
     @OneToMany(mappedBy = "college", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<User> students = new ArrayList<>();
+
 
     @Column(name = "is_active")
     private Boolean isActive = true;

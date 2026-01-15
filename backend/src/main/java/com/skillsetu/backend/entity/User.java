@@ -1,5 +1,6 @@
 package com.skillsetu.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -32,7 +33,9 @@ public class User extends BaseEntity {
     // Academic details (for students)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "college_id")
+    @JsonIgnore
     private College college;
+    ;
 
     @Column(length = 100)
     private String branch; // e.g., "Computer Science"

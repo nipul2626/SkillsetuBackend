@@ -1,5 +1,6 @@
 package com.skillsetu.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ public class Roadmap extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
+    @JsonIgnore
     private User student;
 
     @OneToOne(fetch = FetchType.LAZY)
