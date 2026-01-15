@@ -2,8 +2,10 @@ package com.skillsetu.backend.dto;
 
 import lombok.Data;
 import java.util.List;
+
 @Data
 public class EvaluationDTO {
+
     private Double overallScore;
     private ScoreBreakdown scoreBreakdown;
     private List<QuestionAnalysis> questionAnalysis;
@@ -22,10 +24,18 @@ public class EvaluationDTO {
     @Data
     public static class QuestionAnalysis {
         private Integer questionNumber;
-        private Double score;
+
+        // ✅ NEW — explicit scoring
+        private Double relevanceScore;
+        private Double correctnessScore;
+        private Double depthScore;
+        private Double finalScore;
+
+        // ✅ Explanation fields
         private String whatYouAnswered;
         private String whatWasGood;
         private String whatWasMissing;
         private String idealAnswer;
+        private String reasoning;
     }
 }

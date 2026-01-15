@@ -270,7 +270,12 @@ public class InterviewService {
             for (AIServiceManager.QuestionAnalysis qa : eval.getQuestionAnalysis()) {
                 EvaluationDTO.QuestionAnalysis qaDto = new EvaluationDTO.QuestionAnalysis();
                 qaDto.setQuestionNumber(qa.getQuestionNumber());
-                qaDto.setScore(qa.getScore());
+                qaDto.setFinalScore(qa.getFinalScore());
+                qaDto.setRelevanceScore(qa.getRelevanceScore());
+                qaDto.setCorrectnessScore(qa.getCorrectnessScore());
+                qaDto.setDepthScore(qa.getDepthScore());
+                qaDto.setReasoning(qa.getReasoning());
+
                 qaDto.setWhatYouAnswered(qa.getWhatYouAnswered());
                 qaDto.setWhatWasGood(qa.getWhatWasGood());
                 qaDto.setWhatWasMissing(qa.getWhatWasMissing());
@@ -302,6 +307,22 @@ public class InterviewService {
                 faDto.setCurrentLevel(fa.getCurrentLevel());
                 faDto.setTargetLevel(fa.getTargetLevel());
                 faDto.setEstimatedHours(fa.getEstimatedHours());
+                faDto.setKeyTopics(fa.getKeyTopics());  // ✅ ADD
+
+                // ✅ ADD: Map resources
+                if (fa.getResources() != null) {
+                    List<RoadmapDTO.Resource> resourcesList = new java.util.ArrayList<>();
+                    for (AIServiceManager.Resource r : fa.getResources()) {
+                        RoadmapDTO.Resource rDto = new RoadmapDTO.Resource();
+                        rDto.setType(r.getType());
+                        rDto.setTitle(r.getTitle());
+                        rDto.setLink(r.getLink());
+                        rDto.setDuration(r.getDuration());
+                        resourcesList.add(rDto);
+                    }
+                    faDto.setResources(resourcesList);
+                }
+
                 focusAreasList.add(faDto);
             }
         }
@@ -315,11 +336,43 @@ public class InterviewService {
                 wpDto.setWeek(wp.getWeek());
                 wpDto.setTheme(wp.getTheme());
                 wpDto.setStudyTime(wp.getStudyTime());
+                wpDto.setPracticeTime(wp.getPracticeTime());  // ✅ ADD
                 wpDto.setTopics(wp.getTopics());
+
+                // ✅ ADD: Map practice problems
+                if (wp.getPracticeProblems() != null) {
+                    List<RoadmapDTO.PracticeProblem> problemsList = new java.util.ArrayList<>();
+                    for (AIServiceManager.PracticeProblem pp : wp.getPracticeProblems()) {
+                        RoadmapDTO.PracticeProblem ppDto = new RoadmapDTO.PracticeProblem();
+                        ppDto.setProblem(pp.getProblem());
+                        ppDto.setDifficulty(pp.getDifficulty());
+                        ppDto.setFocusArea(pp.getFocusArea());
+                        problemsList.add(ppDto);
+                    }
+                    wpDto.setPracticeProblems(problemsList);
+                }
+
+                wpDto.setProjects(wp.getProjects());        // ✅ ADD
+                wpDto.setWeekendTask(wp.getWeekendTask());  // ✅ ADD
+
                 weeklyPlanList.add(wpDto);
             }
         }
         dto.setWeeklyPlan(weeklyPlanList);
+
+        // ✅ ADD after weeklyPlan mapping:
+        // Map Milestones
+        List<RoadmapDTO.Milestone> milestonesList = new java.util.ArrayList<>();
+        if (plan.getMilestones() != null) {
+            for (AIServiceManager.Milestone m : plan.getMilestones()) {
+                RoadmapDTO.Milestone mDto = new RoadmapDTO.Milestone();
+                mDto.setWeek(m.getWeek());
+                mDto.setMilestone(m.getMilestone());
+                mDto.setVerification(m.getVerification());
+                milestonesList.add(mDto);
+            }
+        }
+        dto.setMilestones(milestonesList);
 
         return dto;
     }

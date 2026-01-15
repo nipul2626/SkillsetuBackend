@@ -16,6 +16,8 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import com.skillsetu.backend.util.AnswerValidator;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -36,6 +38,10 @@ public class AIServiceManager {
     private final CacheService cacheService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final AnswerValidator answerValidator;
+
+
+
 
     private static final String GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -261,50 +267,106 @@ public class AIServiceManager {
     private String buildStrictEvaluationPrompt(List<QAPair> qaHistory) {
         StringBuilder prompt = new StringBuilder();
 
-        prompt.append("CRITICAL INSTRUCTION: You MUST return ONLY valid JSON. No text before or after.\n\n");
+        prompt.append("YOU ARE A STRICT TECHNICAL INTERVIEW EVALUATOR.\n\n");
 
-        prompt.append("Evaluate this interview:\n\n");
+        prompt.append("CRITICAL RULES:\n");
+        prompt.append("1. ANSWER MUST ADDRESS THE QUESTION - If not, score 0-3\n");
+        prompt.append("2. DO NOT reward fluent language without technical content\n");
+        prompt.append("3. DO NOT infer knowledge not demonstrated\n");
+        prompt.append("4. WRONG MCQ ANSWERS = 0-2 range only\n");
+        prompt.append("5. Clipboard/UI text = automatic 0\n\n");
+
+        // Pre-validate answers and flag issues
+        Map<Integer, AnswerValidator.ValidationResult> validationResults = new HashMap<>();
+
+        prompt.append("===== INTERVIEW QUESTIONS & ANSWERS =====\n\n");
 
         for (int i = 0; i < qaHistory.size(); i++) {
             QAPair qa = qaHistory.get(i);
-            prompt.append(String.format("Q%d: %s\n", i + 1, truncate(qa.getQuestion(), 200)));
-            prompt.append(String.format("A%d: %s\n\n", i + 1, truncate(qa.getAnswer(), 300)));
+
+            // Validate answer quality
+            AnswerValidator.ValidationResult validation =
+                    answerValidator.validate(qa.getQuestion(), qa.getAnswer());
+            validationResults.put(i, validation);
+
+            prompt.append(String.format("--- QUESTION %d ---\n", i + 1));
+            prompt.append("Q: ").append(truncate(qa.getQuestion(), 200)).append("\n");
+            prompt.append("A: ").append(truncate(qa.getAnswer(), 400)).append("\n");
+
+            // Add validation warning if low quality
+            if (!validation.isValid()) {
+                prompt.append(String.format(
+                        "⚠️ QUALITY FLAG: %s (Suggested max score: %.1f)\n",
+                        validation.getReason(),
+                        validation.getSuggestedScoreCap()
+                ));
+            }
+
+            prompt.append("\n");
         }
 
-        prompt.append("\nReturn EXACTLY this JSON structure (no extra text):\n\n");
+        prompt.append("\n===== EVALUATION REQUIREMENTS =====\n\n");
+
+        prompt.append("For EACH question, you MUST:\n\n");
+
+        prompt.append("1. RELEVANCE CHECK (0-10):\n");
+        prompt.append("   - Does answer directly address the question?\n");
+        prompt.append("   - Is it on-topic?\n");
+        prompt.append("   - Score 0-3 if answer is generic/irrelevant\n\n");
+
+        prompt.append("2. CORRECTNESS CHECK (0-10):\n");
+        prompt.append("   - Is the technical explanation accurate?\n");
+        prompt.append("   - Are there factual errors?\n");
+        prompt.append("   - Score 0-2 for wrong MCQ answers\n\n");
+
+        prompt.append("3. DEPTH CHECK (0-10):\n");
+        prompt.append("   - Does answer show understanding?\n");
+        prompt.append("   - Are examples provided?\n");
+        prompt.append("   - Score 0-3 for surface-level answers\n\n");
+
+        prompt.append("FINAL QUESTION SCORE = (relevance + correctness + depth) / 3\n\n");
+
+        prompt.append("OVERALL SCORE = Average of all question scores\n\n");
+
+        prompt.append("===== REQUIRED JSON OUTPUT =====\n\n");
         prompt.append("{\n");
         prompt.append("  \"evaluation\": {\n");
-        prompt.append("    \"overallScore\": 7.5,\n");
+        prompt.append("    \"overallScore\": 4.2,\n");
+        prompt.append("    \"confidenceLevel\": \"Low|Medium|High\",\n");
         prompt.append("    \"scoreBreakdown\": {\n");
-        prompt.append("      \"technicalKnowledge\": 7.0,\n");
-        prompt.append("      \"problemSolving\": 7.5,\n");
-        prompt.append("      \"communication\": 8.0,\n");
-        prompt.append("      \"depthOfUnderstanding\": 7.0\n");
+        prompt.append("      \"technicalKnowledge\": 4.0,\n");
+        prompt.append("      \"problemSolving\": 4.5,\n");
+        prompt.append("      \"communication\": 5.0,\n");
+        prompt.append("      \"depthOfUnderstanding\": 3.5\n");
         prompt.append("    },\n");
-        prompt.append("    \"coachFeedback\": \"Encouraging feedback in 2-3 sentences.\",\n");
         prompt.append("    \"questionAnalysis\": [\n");
         prompt.append("      {\n");
         prompt.append("        \"questionNumber\": 1,\n");
-        prompt.append("        \"score\": 7.5,\n");
-        prompt.append("        \"whatYouAnswered\": \"Brief summary\",\n");
-        prompt.append("        \"whatWasGood\": \"Specific strengths\",\n");
+        prompt.append("        \"relevanceScore\": 2.0,\n");
+        prompt.append("        \"correctnessScore\": 1.0,\n");
+        prompt.append("        \"depthScore\": 1.5,\n");
+        prompt.append("        \"finalScore\": 1.5,\n");
+        prompt.append("        \"whatYouAnswered\": \"Brief summary of their answer\",\n");
+        prompt.append("        \"whatWasGood\": \"Specific strengths OR 'No technical content'\",\n");
         prompt.append("        \"whatWasMissing\": \"Specific gaps\",\n");
-        prompt.append("        \"idealAnswer\": \"What perfect answer includes\"\n");
+        prompt.append("        \"idealAnswer\": \"What a perfect answer includes\",\n");
+        prompt.append("        \"reasoning\": \"Why this score? Was answer relevant?\"\n");
         prompt.append("      }\n");
         prompt.append("    ],\n");
-        prompt.append("    \"topStrengths\": [\"Strength 1\", \"Strength 2\", \"Strength 3\"],\n");
-        prompt.append("    \"criticalGaps\": [\"Gap 1\", \"Gap 2\"]\n");
+        prompt.append("    \"coachFeedback\": \"Honest feedback in 3-4 sentences\",\n");
+        prompt.append("    \"topStrengths\": [\"Specific strength 1\", \"Strength 2\"],\n");
+        prompt.append("    \"criticalGaps\": [\"Gap 1 with examples\", \"Gap 2\"]\n");
         prompt.append("  },\n");
         prompt.append("  \"trainingPlan\": {\n");
-        prompt.append("    \"readinessScore\": 65,\n");
-        prompt.append("    \"targetScore\": 85,\n");
-        prompt.append("    \"timeToTarget\": \"4 weeks with 2hrs/day\",\n");
+        prompt.append("    \"readinessScore\": 45,\n");
+        prompt.append("    \"targetScore\": 75,\n");
+        prompt.append("    \"timeToTarget\": \"6-8 weeks with 2hrs/day\",\n");
         prompt.append("    \"focusAreas\": [\n");
         prompt.append("      {\n");
-        prompt.append("        \"area\": \"Topic name\",\n");
+        prompt.append("        \"area\": \"Specific topic they struggled with\",\n");
         prompt.append("        \"priority\": \"High\",\n");
-        prompt.append("        \"currentLevel\": 5,\n");
-        prompt.append("        \"targetLevel\": 8,\n");
+        prompt.append("        \"currentLevel\": 3,\n");
+        prompt.append("        \"targetLevel\": 7,\n");
         prompt.append("        \"estimatedHours\": 20,\n");
         prompt.append("        \"keyTopics\": [\"Topic 1\", \"Topic 2\"],\n");
         prompt.append("        \"resources\": [\n");
@@ -326,30 +388,31 @@ public class AIServiceManager {
         prompt.append("        \"topics\": [\"Topic 1\", \"Topic 2\"],\n");
         prompt.append("        \"practiceProblems\": [\n");
         prompt.append("          {\n");
-        prompt.append("            \"problem\": \"Problem description\",\n");
+        prompt.append("            \"problem\": \"Specific practice problem\",\n");
         prompt.append("            \"difficulty\": \"Easy\",\n");
         prompt.append("            \"focusArea\": \"What it practices\"\n");
         prompt.append("          }\n");
         prompt.append("        ],\n");
-        prompt.append("        \"projects\": [\"Project description\"],\n");
-        prompt.append("        \"weekendTask\": \"Weekend task\"\n");
+        prompt.append("        \"projects\": [\"Build a simple X\", \"Create Y\"],\n");
+        prompt.append("        \"weekendTask\": \"Weekend challenge\"\n");
         prompt.append("      }\n");
         prompt.append("    ],\n");
         prompt.append("    \"milestones\": [\n");
         prompt.append("      {\n");
         prompt.append("        \"week\": 1,\n");
-        prompt.append("        \"milestone\": \"Achievement\",\n");
-        prompt.append("        \"verification\": \"How to verify\"\n");
+        prompt.append("        \"milestone\": \"Complete fundamentals\",\n");
+        prompt.append("        \"verification\": \"Pass quiz with 80%+\"\n");
         prompt.append("      }\n");
         prompt.append("    ]\n");
         prompt.append("  }\n");
         prompt.append("}\n\n");
-        prompt.append("IMPORTANT:\n");
-        prompt.append("- Include ALL 10 questionAnalysis items\n");
+
+        prompt.append("CRITICAL:\n");
+        prompt.append("- Include ALL 10 questionAnalysis with 3 scores each\n");
         prompt.append("- Include ALL 4 weeks in weeklyPlan\n");
+        prompt.append("- Each week MUST have: studyTime, practiceTime, topics, practiceProblems, projects, weekendTask\n");
         prompt.append("- Include 4 milestones\n");
-        prompt.append("- Scores 5-8 are normal\n");
-        prompt.append("- Be encouraging\n");
+        prompt.append("- Be HONEST about low scores\n");
         prompt.append("- Return ONLY JSON, no markdown\n");
 
         return prompt.toString();
@@ -464,12 +527,19 @@ public class AIServiceManager {
     }
 
     /**
-     * Parse evaluation section
+     * Parse evaluation section with new validation scores
      */
     private ComprehensiveEvaluation parseEvaluation(Map<String, Object> evalMap) throws Exception {
         ComprehensiveEvaluation eval = new ComprehensiveEvaluation();
 
         eval.setOverallScore(((Number) evalMap.get("overallScore")).doubleValue());
+
+        // ✅ NEW: Confidence level
+        if (evalMap.containsKey("confidenceLevel")) {
+            eval.setConfidenceLevel((String) evalMap.get("confidenceLevel"));
+        } else {
+            eval.setConfidenceLevel("Medium"); // Default
+        }
 
         Map<String, Object> breakdown = (Map<String, Object>) evalMap.get("scoreBreakdown");
         Map<String, Double> scoreBreakdown = new HashMap<>();
@@ -481,16 +551,42 @@ public class AIServiceManager {
 
         eval.setCoachFeedback((String) evalMap.get("coachFeedback"));
 
+        // ✅ IMPROVED: Parse question analysis with new scores
         List<Map<String, Object>> analysisData = (List<Map<String, Object>>) evalMap.get("questionAnalysis");
         List<QuestionAnalysis> questionAnalysis = new ArrayList<>();
+
         for (Map<String, Object> qa : analysisData) {
             QuestionAnalysis analysis = new QuestionAnalysis();
             analysis.setQuestionNumber(((Number) qa.get("questionNumber")).intValue());
-            analysis.setScore(((Number) qa.get("score")).doubleValue());
+
+            // ✅ NEW: Parse 3-layer scores
+            if (qa.containsKey("relevanceScore")) {
+                analysis.setRelevanceScore(((Number) qa.get("relevanceScore")).doubleValue());
+            }
+            if (qa.containsKey("correctnessScore")) {
+                analysis.setCorrectnessScore(((Number) qa.get("correctnessScore")).doubleValue());
+            }
+            if (qa.containsKey("depthScore")) {
+                analysis.setDepthScore(((Number) qa.get("depthScore")).doubleValue());
+            }
+
+            // Final score (backward compatible with old 'score' field)
+            if (qa.containsKey("finalScore")) {
+                analysis.setFinalScore(((Number) qa.get("finalScore")).doubleValue());
+            } else if (qa.containsKey("score")) {
+                analysis.setFinalScore(((Number) qa.get("score")).doubleValue());
+            }
+
             analysis.setWhatYouAnswered((String) qa.get("whatYouAnswered"));
             analysis.setWhatWasGood((String) qa.get("whatWasGood"));
             analysis.setWhatWasMissing((String) qa.get("whatWasMissing"));
             analysis.setIdealAnswer((String) qa.get("idealAnswer"));
+
+            // ✅ NEW: Reasoning
+            if (qa.containsKey("reasoning")) {
+                analysis.setReasoning((String) qa.get("reasoning"));
+            }
+
             questionAnalysis.add(analysis);
         }
         eval.setQuestionAnalysis(questionAnalysis);
@@ -623,6 +719,7 @@ public class AIServiceManager {
     @Data
     public static class ComprehensiveEvaluation {
         private Double overallScore;
+        private String confidenceLevel;     // ✅ NEW - "Low", "Medium", "High"
         private Map<String, Double> scoreBreakdown;
         private List<QuestionAnalysis> questionAnalysis;
         private String coachFeedback;
@@ -633,11 +730,15 @@ public class AIServiceManager {
     @Data
     public static class QuestionAnalysis {
         private Integer questionNumber;
-        private Double score;
+        private Double relevanceScore;      // ✅ NEW
+        private Double correctnessScore;    // ✅ NEW
+        private Double depthScore;          // ✅ NEW
+        private Double finalScore;          // Renamed from 'score'
         private String whatYouAnswered;
         private String whatWasGood;
         private String whatWasMissing;
         private String idealAnswer;
+        private String reasoning;           // ✅ NEW - Why this score?
     }
 
     @Data
