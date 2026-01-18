@@ -55,7 +55,10 @@ public class AnalyticsService {
                 interviewRepository.countByCollegeId(collegeId));
 
         dto.setActiveRoadmaps(
-                roadmapRepository.countActiveRoadmapsByCollege(collegeId));
+                roadmapRepository.countByStudent_College_Id(collegeId)
+        );
+
+
 
         dto.setAverageInterviewScore(
                 Optional.ofNullable(

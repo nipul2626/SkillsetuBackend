@@ -55,6 +55,7 @@ public class AuthController {
             response.setToken(token);
             response.setEmail(request.getEmail());
             response.setRole(user.getRole().name());
+            response.setStudentId(user.getId());
             response.setStudentId(
                     user.getRole() == User.UserRole.ROLE_STUDENT ? user.getId() : null
             );
