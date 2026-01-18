@@ -46,7 +46,7 @@ public class DatabaseInitializer {
             student.setEmail("student@test.com");
             student.setPassword(passwordEncoder.encode("password123")); // HASH THE PASSWORD
             student.setFullName("Test Student");
-            student.setRole(User.UserRole.STUDENT);
+            student.setRole(User.UserRole.ROLE_STUDENT);
             student.setCollege(college);
             student.setBranch("Computer Science");
             student.setYearOfStudy(3);
@@ -62,7 +62,7 @@ public class DatabaseInitializer {
             tpo.setEmail("tpo@test.com");
             tpo.setPassword(passwordEncoder.encode("password123"));
             tpo.setFullName("Test TPO");
-            tpo.setRole(User.UserRole.TPO);
+            tpo.setRole(User.UserRole.ROLE_TPO);
             tpo.setCollege(college);
             tpo.setIsActive(true);
             tpo = userRepository.save(tpo);

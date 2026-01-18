@@ -58,9 +58,17 @@ public class AuthController {
             response.setToken(token);
             response.setEmail(request.getEmail());
             response.setRole(user.getRole().name());
-            response.setStudentId(user.getId());  // CRITICAL: Set the student ID
+            response.setStudentId(
+                    user.getRole() == User.UserRole.ROLE_STUDENT ? user.getId() : null
+            );
+
+            response.setCollegeId(
+                    user.getCollege() != null ? user.getCollege().getId() : null
+            );
+
             response.setFullName(user.getFullName());
             response.setMessage("Login successful");
+
 
             log.info("User {} authenticated successfully", request.getEmail());
             return ResponseEntity.ok(response);

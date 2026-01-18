@@ -75,11 +75,11 @@ public class AnalyticsController {
             @PathVariable Long collegeId,
             @Valid @RequestBody StudentFilterRequest filterRequest) {
 
-        log.info("🔍 TPO filtering students for college: {}", collegeId);
         return ResponseEntity.ok(
                 analyticsService.getFilteredStudents(collegeId, filterRequest)
         );
     }
+
 
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasRole('TPO')")

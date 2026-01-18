@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByCollegeIdAndRole(Long collegeId, User.UserRole role);
 
-    @Query("SELECT u FROM User u WHERE u.college.id = :collegeId AND u.role = 'STUDENT'")
+    @Query("SELECT u FROM User u WHERE u.college.id = :collegeId AND u.role = 'ROLE_STUDENT'")
     Page<User> findStudentsByCollege(@Param("collegeId") Long collegeId, Pageable pageable);
 
     @Query("SELECT AVG(u.placementReadinessScore) FROM User u WHERE u.college.id = :collegeId AND u.role = 'STUDENT'")

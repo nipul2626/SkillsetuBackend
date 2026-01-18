@@ -55,7 +55,7 @@ public class AnalyticsService {
     private CollegeAnalyticsDTO computeCollegeAnalytics(Long collegeId) {
         CollegeAnalyticsDTO analytics = new CollegeAnalyticsDTO();
 
-        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.STUDENT);
+        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.ROLE_STUDENT);
         analytics.setTotalStudents((long) students.size());
 
         Long totalInterviews = interviewRepository.countByCollegeId(collegeId);
@@ -116,7 +116,7 @@ public class AnalyticsService {
     }
 
     public List<StudentPerformanceDTO> getStudentsNeedingAttention(Long collegeId, int limit) {
-        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.STUDENT);
+        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.ROLE_STUDENT);
 
         return students.stream()
                 .filter(s -> s.getPlacementReadinessScore() < 60.0)
@@ -137,7 +137,7 @@ public class AnalyticsService {
         stats.put("avgInterviewScore", analytics.getAverageInterviewScore());
         stats.put("recentActivity", analytics.getRecentInterviewsCount());
 
-        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.STUDENT);
+        List<User> students = userRepository.findByCollegeIdAndRole(collegeId, User.UserRole.ROLE_STUDENT);
         long excellent = students.stream().filter(s -> s.getPlacementReadinessScore() >= 80).count();
         long good = students.stream().filter(s -> s.getPlacementReadinessScore() >= 60 && s.getPlacementReadinessScore() < 80).count();
         long needsWork = students.stream().filter(s -> s.getPlacementReadinessScore() < 60).count();
@@ -158,30 +158,56 @@ public class AnalyticsService {
      */
     public Map<String, Object> getFilteredStudents(
             Long collegeId,
-            StudentFilterRequest filter) {
+            StudentFilterRequest filterRequest) {
 
-        Pageable pageable = PageRequest.of(
-                filter.getPage(),
-                filter.getSize()
-        );
-
-        Page<User> students =
-                userRepository.findStudentsByCollege(collegeId, pageable);
-
-        List<StudentPerformanceDTO> filteredStudents =
-                students.getContent().stream()
-                        .map(this::mapToDetailedPerformanceDTO)
-                        .filter(s -> matchesFilter(s, filter))
+        List<StudentPerformanceDTO> students =
+                userRepository.findByCollegeIdAndRole(
+                                collegeId,
+                                User.UserRole.ROLE_STUDENT
+                        )
+                        .stream()
+                        .map(this::mapToStudentDTO)
                         .toList();
 
         Map<String, Object> response = new HashMap<>();
-        response.put("students", filteredStudents);
-        response.put("currentPage", students.getNumber());
-        response.put("totalPages", students.getTotalPages());
-        response.put("totalElements", students.getTotalElements());
+        response.put("students", students);
+        response.put("total", students.size());
 
         return response;
     }
+    /**
+     * 🔹 Maps User entity to StudentPerformanceDTO
+     * Used by TPO student list
+     */
+    private StudentPerformanceDTO mapToStudentDTO(User student) {
+
+        StudentPerformanceDTO dto = new StudentPerformanceDTO();
+
+        dto.setStudentId(student.getId());
+        dto.setFullName(student.getFullName());
+        dto.setEmail(student.getEmail());
+
+        dto.setPlacementReadinessScore(
+                student.getPlacementReadinessScore() != null
+                        ? student.getPlacementReadinessScore()
+                        : 0.0
+        );
+
+        dto.setTotalInterviews(
+                student.getTotalInterviewsTaken() != null
+                        ? student.getTotalInterviewsTaken()
+                        : 0
+        );
+
+        dto.setAverageScore(
+                student.getAverageScore() != null
+                        ? student.getAverageScore()
+                        : 0.0
+        );
+
+        return dto;
+    }
+
 
     private boolean matchesFilter(
             StudentPerformanceDTO student,
@@ -232,7 +258,7 @@ public class AnalyticsService {
         Map<String, Object> stats = new HashMap<>();
 
         List<User> students = userRepository.findByCollegeIdAndRole(
-                collegeId, User.UserRole.STUDENT);
+                collegeId, User.UserRole.ROLE_STUDENT);
 
         // Group by branch
         Map<String, List<User>> byBranch = students.stream()
@@ -328,7 +354,7 @@ public class AnalyticsService {
         SkillGapDTO dto = new SkillGapDTO();
 
         List<User> students = userRepository.findByCollegeIdAndRole(
-                collegeId, User.UserRole.STUDENT);
+                collegeId, User.UserRole.ROLE_STUDENT);
 
         // ================= Top Deficiencies =================
         Map<String, Integer> deficiencyCount = new HashMap<>();
@@ -489,7 +515,7 @@ public class AnalyticsService {
 
     public Map<String, Object> getSkillGapAnalysis(Long collegeId) {
         List<User> students = userRepository.findByCollegeIdAndRole(
-                collegeId, User.UserRole.STUDENT);
+                collegeId, User.UserRole.ROLE_STUDENT);
 
         Map<String, Object> analysis = new HashMap<>();
 
@@ -602,7 +628,7 @@ public class AnalyticsService {
 
         CollegeAnalyticsDTO analytics = getCollegeAnalytics(collegeId);
         List<User> students = userRepository.findByCollegeIdAndRole(
-                collegeId, User.UserRole.STUDENT);
+                collegeId, User.UserRole.ROLE_STUDENT);
         List<Interview> interviews = interviewRepository.findByCollegeId(
                 collegeId, Pageable.unpaged()).getContent();
 

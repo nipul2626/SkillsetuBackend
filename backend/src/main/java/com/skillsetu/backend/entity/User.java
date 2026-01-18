@@ -74,6 +74,6 @@ public class User extends BaseEntity {
     private List<Roadmap> roadmaps = new ArrayList<>();
 
     public enum UserRole {
-        STUDENT, TPO, ADMIN
+        ROLE_STUDENT, ROLE_TPO, ADMIN
     }
 }
