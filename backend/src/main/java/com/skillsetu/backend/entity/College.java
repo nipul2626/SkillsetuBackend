@@ -14,27 +14,35 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class College extends BaseEntity {
 
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, unique = true, length = 200)
     private String name;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 100)
+    private String state;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(name = "contact_email", length = 100)
+    private String contactEmail;
+
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
+
+    @OneToMany(mappedBy = "college", cascade = CascadeType.ALL)
+    private List<User> users = new ArrayList<>();
+
+    @Column(length = 200)
     private String location;
 
-    @Column(name = "established_year")
     private Integer establishedYear;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 500)
     private String description;
 
-    @OneToMany(mappedBy = "college", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<User> tpos = new ArrayList<>();
-
-    @OneToMany(mappedBy = "college", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<User> students = new ArrayList<>();
-
-
-    @Column(name = "is_active")
     private Boolean isActive = true;
+
 }

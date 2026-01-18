@@ -19,6 +19,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -37,10 +39,6 @@ public class AuthController {
         log.info("Login attempt received for email: {}", request.getEmail());
 
         try {
-            // This is where the magic (and the failure) happens
-            System.out.println("DEBUG: Email: [" + request.getEmail() + "]");
-            System.out.println("DEBUG: Password: [" + request.getPassword() + "]");
-
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
@@ -50,7 +48,6 @@ public class AuthController {
 
             String token = tokenProvider.generateToken(authentication);
 
-            // Get user details to include in response
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -61,14 +58,11 @@ public class AuthController {
             response.setStudentId(
                     user.getRole() == User.UserRole.ROLE_STUDENT ? user.getId() : null
             );
-
             response.setCollegeId(
                     user.getCollege() != null ? user.getCollege().getId() : null
             );
-
             response.setFullName(user.getFullName());
             response.setMessage("Login successful");
-
 
             log.info("User {} authenticated successfully", request.getEmail());
             return ResponseEntity.ok(response);
@@ -76,25 +70,43 @@ public class AuthController {
         } catch (BadCredentialsException e) {
             log.error("Authentication failed: Invalid password for user {}", request.getEmail());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid email or password");
+                    .body(createErrorResponse("Invalid email or password"));
         } catch (Exception e) {
             log.error("Authentication failed for user {}: {}", request.getEmail(), e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Authentication failed: " + e.getMessage());
+                    .body(createErrorResponse("Authentication failed: " + e.getMessage()));
         }
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         log.info("Registration attempt for email: {}", request.getEmail());
+
         try {
-            authService.registerUser(request);
-            return ResponseEntity.ok("User registered successfully");
-        } catch (Exception e) {
+            User user = authService.registerUser(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Registration successful! Please login.");
+            response.put("email", user.getEmail());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (RuntimeException e) {
             log.error("Registration failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Registration failed: " + e.getMessage());
+                    .body(createErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Registration failed with unexpected error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Registration failed. Please try again."));
         }
+    }
+
+    private Map<String, Object> createErrorResponse(String message) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
+        error.put("message", message);
+        return error;
     }
 }

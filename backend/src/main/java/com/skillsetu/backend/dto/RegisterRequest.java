@@ -1,25 +1,30 @@
 package com.skillsetu.backend.dto;
 
-import lombok.Data;
 import jakarta.validation.constraints.*;
-
+import lombok.Data;
 @Data
 public class RegisterRequest {
-    @NotBlank
-    @Email
-    private String email;
-
-    @NotBlank
-    @Size(min = 6)
-    private String password;
 
     @NotBlank
     private String fullName;
 
+    @Email
     @NotBlank
-    private String role;
+    private String email;
 
-    private Long collegeId;
+    @NotBlank
+    @Size(min = 8)
+    private String password;
+
+    @NotBlank
+    @Pattern(regexp = "^[0-9]{10}$")
+    private String phoneNumber;
+
+    @NotBlank
+    private String collegeName;
+
+    @NotBlank
     private String branch;
+
     private Integer yearOfStudy;
 }
