@@ -80,6 +80,19 @@ public class AnalyticsController {
         );
     }
 
+    @PostMapping("/refresh/{collegeId}")
+    @PreAuthorize("hasRole('TPO')")
+    public ResponseEntity<?> refreshCollegeAnalytics(@PathVariable Long collegeId) {
+
+        log.info("🔄 Force refresh analytics for college {}", collegeId);
+
+        analyticsService.clearCollegeAnalyticsCache(collegeId);
+
+        return ResponseEntity.ok(Map.of(
+                "status", "refreshed"
+        ));
+    }
+
 
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasRole('TPO')")
