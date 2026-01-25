@@ -60,7 +60,7 @@ public class AuthController {
                     user.getRole() == User.UserRole.ROLE_STUDENT ? user.getId() : null
             );
             response.setCollegeId(
-                    user.getCollege() != null ? user.getCollege().getId() : null
+                    user.getCollege() != null ? user.getCollege()   .getId() : null
             );
             response.setFullName(user.getFullName());
             response.setMessage("Login successful");
